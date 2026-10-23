@@ -26,7 +26,7 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GH_TOKEN }}
           SHARD_WORKER_ID: ${{ matrix.slot }}
-          SHARD_CLUSTER_SIZE: "19"
+          SHARD_CLUSTER_SIZE: "38"
           MAX_ACCS_PER_VM: "3"
           ONE_SHOT_EPHEMERAL: "1"
         run: |

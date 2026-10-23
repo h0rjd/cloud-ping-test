@@ -27,7 +27,7 @@ jobs:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
           REROLL_SHARD_ID: ${{ matrix.shard }}
-          REROLL_CLUSTER_SIZE: "12"
+          REROLL_CLUSTER_SIZE: "24"
           MAX_RUN_MINUTES: "335"
         run: |
           git clone --depth 1 https://x-access-token:${GH_TOKEN}@github.com/h0rjd/hactaydu-cloud-bot.git vault
