@@ -1,4 +1,4 @@
-name: Cloud 8-Node Reroll Cluster (224 Threads)
+name: Cloud 12-Node Reroll Cluster (336 Threads)
 
 on:
   workflow_dispatch:
@@ -16,26 +16,21 @@ jobs:
     timeout-minutes: 350
     strategy:
       fail-fast: false
-      max-parallel: 7
+      max-parallel: 11
       matrix:
-        shard: [2, 3, 4, 5, 6, 7, 8]
+        shard: [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]
 
     steps:
-      - name: Setup Node.js 20
-        uses: actions/setup-node@v4
-        with:
-          node-version: "20"
-
       - name: Clone Vault & Run Reroll Shard
         env:
           GH_TOKEN: ${{ secrets.GH_TOKEN }}
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
           REROLL_SHARD_ID: ${{ matrix.shard }}
-          REROLL_CLUSTER_SIZE: "8"
+          REROLL_CLUSTER_SIZE: "12"
           MAX_RUN_MINUTES: "335"
         run: |
           git clone --depth 1 https://x-access-token:${GH_TOKEN}@github.com/h0rjd/hactaydu-cloud-bot.git vault
           cd vault
-          PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1 npm install --no-audit --no-fund
+          PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1 npm install --no-audit --no-fund --prefer-offline
           node cloud_reroll_shard.js
