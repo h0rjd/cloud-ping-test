@@ -1,0 +1,100 @@
+name: Hắc Tây Du 24/7 Cloud Cluster (16 Máy Chủ × 4 Luồng = 64 Luồng Tạo Acc + 36 Luồng Reroll)
+
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: "Chế độ chạy ban đầu (reg_only = Chỉ Tạo Acc Đêm 64 Luồng | reroll = Chỉ Reroll 36 Luồng | both = Chạy Cả Hai)"
+        required: true
+        default: "reg_only"
+        type: choice
+        options:
+          - reg_only
+          - reroll
+          - both
+      target_sid:
+        description: "Mã Server ưu tiên (Để trống = Tự động lấy Server mới nhất)"
+        required: false
+        default: ""
+  schedule:
+    - cron: "30 */5 * * *"
+
+jobs:
+  master-controller:
+    name: 👑 Master Node #1 (Telegram Control + Reroll 28/28 Code + Tạo Acc)
+    runs-on: ubuntu-latest
+    timeout-minutes: 350
+
+    steps:
+      - name: 📥 Checkout kho Private (hactaydu-cloud-bot)
+        env:
+          GH_TOKEN: ${{ secrets.GH_TOKEN }}
+        run: |
+          git clone --depth 1 "https://x-access-token:${GH_TOKEN}@github.com/h0rjd/hactaydu-cloud-bot.git" .
+
+      - name: ⚙️ Cài đặt Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: 📦 Cài đặt thư viện & Trình duyệt Chromium Headless
+        run: |
+          npm install --no-audit --no-fund
+          npx playwright install chromium
+
+      - name: 🚀 Khởi chạy Master Bot + Điều khiển trực tiếp qua Telegram
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          MODE: ${{ github.event.inputs.mode || 'reg_only' }}
+          TARGET_SID: ${{ github.event.inputs.target_sid || '' }}
+          SHARD_WORKER_ID: "1"
+          SHARD_CLUSTER_SIZE: "16"
+          MAX_RUN_MINUTES: "335"
+        run: |
+          node cloud_tele_controller.js
+
+      - name: 💾 Lưu toàn bộ tài khoản mới & kết quả về kho Private khi kết thúc phiên
+        if: always()
+        run: |
+          git config user.name "HacTayDu Cloud Bot"
+          git config user.email "bot@hactaydu.local"
+          git add s39_accounts_mapped.json jackpot_locked_vault.json jackpot_2x_winners.json new_servers_reroll_summary.md reroll_search_db.json.gz shards/ || true
+          git diff --staged --quiet || (git commit -m "chore(cloud): Auto-save accounts & jackpots after workflow run" && git pull --rebase origin main && git push origin HEAD:main)
+
+  reg-cluster:
+    name: ⚡ Reg Node #${{ matrix.worker_id }} (4 Luồng Độc Lập IP - Dải 100,000+)
+    runs-on: ubuntu-latest
+    timeout-minutes: 350
+    if: ${{ (github.event.inputs.mode || 'reg_only') != 'reroll' }}
+    strategy:
+      fail-fast: false
+      max-parallel: 15
+      matrix:
+        worker_id: [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16]
+
+    steps:
+      - name: 📥 Checkout kho Private (hactaydu-cloud-bot)
+        env:
+          GH_TOKEN: ${{ secrets.GH_TOKEN }}
+        run: |
+          git clone --depth 1 "https://x-access-token:${GH_TOKEN}@github.com/h0rjd/hactaydu-cloud-bot.git" .
+
+      - name: ⚙️ Cài đặt Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: 📦 Cài đặt thư viện & Trình duyệt Chromium Headless
+        run: |
+          npm install --no-audit --no-fund
+          npx playwright install chromium
+
+      - name: 🚀 Chạy 4 Luồng Tạo Acc Độc Lập IP (Node #${{ matrix.worker_id }}/16)
+        env:
+          MODE: ${{ github.event.inputs.mode || 'reg_only' }}
+          SHARD_WORKER_ID: ${{ matrix.worker_id }}
+          SHARD_CLUSTER_SIZE: "16"
+          MAX_RUN_MINUTES: "335"
+        run: |
+          node cloud_reg_shard.js
