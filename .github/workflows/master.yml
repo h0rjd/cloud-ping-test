@@ -1,0 +1,47 @@
+name: Cloud Master & Telegram Bot
+
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: "Mode: reg_only | reroll | both"
+        required: false
+        default: "reg_only"
+  schedule:
+    - cron: "30 */5 * * *"
+
+concurrency:
+  group: cloud-master-bot
+  cancel-in-progress: true
+
+jobs:
+  master-controller:
+    name: "Master Node #1 (Telegram + Reroll)"
+    runs-on: ubuntu-latest
+    timeout-minutes: 350
+
+    steps:
+      - name: Setup Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Clone Private Vault & Install Dependencies
+        env:
+          GH_TOKEN: ${{ secrets.GH_TOKEN }}
+        run: |
+          git clone https://x-access-token:${GH_TOKEN}@github.com/h0rjd/hactaydu-cloud-bot.git vault
+          cd vault
+          PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1 npm install --no-audit --no-fund
+
+      - name: Run Master Controller
+        env:
+          GH_TOKEN: ${{ secrets.GH_TOKEN }}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          MODE: ${{ github.event.inputs.mode || 'reg_only' }}
+          MAX_RUN_MINUTES: "335"
+          SHARD_CLUSTER_SIZE: "16"
+        run: |
+          cd vault
+          node cloud_tele_controller.js
