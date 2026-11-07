@@ -1,0 +1,18 @@
+name: Test Single Reg
+
+on:
+  workflow_dispatch:
+
+jobs:
+  test-reg:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Run Test Reg
+        env:
+          GH_TOKEN: ${{ secrets.GH_TOKEN }}
+          SHARD_WORKER_ID: "99"
+          MAX_ACCS_PER_VM: "1"
+        run: |
+          git clone --depth 1 https://x-access-token:${GH_TOKEN}@github.com/h0rjd/hactaydu-cloud-bot.git vault
+          cd vault
+          node cloud_reg_shard.js
