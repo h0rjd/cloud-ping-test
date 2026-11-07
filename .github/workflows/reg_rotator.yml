@@ -35,6 +35,7 @@ jobs:
           MAX_ACCS_PER_VM: ${{ github.event.inputs.max_accs_per_vm || '3' }}
           ONE_SHOT_EPHEMERAL: "1"
         run: |
+          rm -rf vault
           git clone --depth 1 https://x-access-token:${GH_TOKEN}@github.com/h0rjd/hactaydu-cloud-bot.git vault
           cd vault
           npm install --no-audit --no-fund --prefer-offline
