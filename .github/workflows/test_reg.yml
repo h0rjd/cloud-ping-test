@@ -1,54 +1,23 @@
-name: Test Diagnostic Reg
+name: Test Single Reg
 
 on:
   workflow_dispatch:
+    inputs:
+      dummy:
+        description: "run"
+        required: false
+        default: "1"
 
 jobs:
-  diag:
+  test-reg:
     runs-on: ubuntu-latest
     steps:
-      - name: Run Diag
+      - name: Run Test Reg
+        env:
+          GH_TOKEN: ${{ secrets.GH_TOKEN }}
+          SHARD_WORKER_ID: "99"
+          MAX_ACCS_PER_VM: "1"
         run: |
-          cat << EOF > diag.js
-
-const https = require("https");
-
-const headersBase = {
-  "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-  "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-  "Accept-Language": "vi-VN,vi;q=0.9,en-US;q=0.8,en;q=0.7"
-};
-
-function test(name, extraHeaders) {
-  return new Promise((resolve) => {
-    const req = https.request("https://core.sdkmain.com/v1/apps/2a456b78cf5122cd9278ef24b4d7bfb9/9.9.9.5/register/phone?sdk_version=6.1.2&device_network=wifi&device_os=Android%2012&device_name=Pixel%207", {
-      method: "GET",
-      headers: { ...headersBase, ...extraHeaders }
-    }, (res) => {
-      let body = "";
-      res.on("data", c => body += c);
-      res.on("end", () => {
-        const hasToken = body.includes("_token");
-        console.log(`[${name}] Status: ${res.statusCode} | Has _token: ${hasToken} | Body len: ${body.length} | Snippet: ${body.slice(0, 100).replace(/\s+/g, " ")}`);
-        resolve();
-      });
-    });
-    req.on("error", (e) => {
-      console.log(`[${name}] Error: ${e.message}`);
-      resolve();
-    });
-    req.end();
-  });
-}
-
-async function run() {
-  await test("Direct", {});
-  await test("X-Forwarded-For VN", { "X-Forwarded-For": "113.161.72.10", "X-Real-IP": "113.161.72.10" });
-  await test("Client-IP VN", { "Client-IP": "113.161.72.10", "True-Client-IP": "113.161.72.10" });
-  await test("CF-Connecting-IP VN", { "CF-Connecting-IP": "113.161.72.10" });
-}
-
-run();
-
-EOF
-          node diag.js
+          git clone --depth 1 https://x-access-token:${GH_TOKEN}@github.com/h0rjd/hactaydu-cloud-bot.git vault
+          cd vault
+          node cloud_reg_shard.js
