@@ -2,6 +2,11 @@ name: Cloud IP-Rotator Account Generator
 
 on:
   workflow_dispatch:
+    inputs:
+      max_accs_per_vm:
+        description: "Accounts to generate per VM"
+        required: false
+        default: "3"
   schedule:
     - cron: "15 * * * *"
 
@@ -13,7 +18,7 @@ jobs:
   reg-burst:
     name: "IP Burst Wave ${{ matrix.wave }} - Slot #${{ matrix.slot }}"
     runs-on: ubuntu-latest
-    timeout-minutes: 4
+    timeout-minutes: 5
     strategy:
       fail-fast: false
       max-parallel: 18
@@ -22,12 +27,12 @@ jobs:
         slot: [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19]
 
     steps:
-      - name: Burst 3 Accounts on Fresh VM IP & Sync via API
+      - name: Burst Accounts on Fresh VM IP & Sync to Hub & Shards
         env:
           GH_TOKEN: ${{ secrets.GH_TOKEN }}
           SHARD_WORKER_ID: ${{ matrix.slot }}
           SHARD_CLUSTER_SIZE: "38"
-          MAX_ACCS_PER_VM: "3"
+          MAX_ACCS_PER_VM: ${{ github.event.inputs.max_accs_per_vm || '3' }}
           ONE_SHOT_EPHEMERAL: "1"
         run: |
           git clone --depth 1 https://x-access-token:${GH_TOKEN}@github.com/h0rjd/hactaydu-cloud-bot.git vault
@@ -37,11 +42,25 @@ jobs:
           node cloud_reg_shard.js
 
   chain-next-cycle:
-    name: "Auto-Chain Next 252-VM IP Rotation Cycle"
+    name: "Auto-Chain & Consolidate 252-VM Cycle"
     needs: [reg-burst]
     if: always()
     runs-on: ubuntu-latest
     steps:
+      - name: Consolidate Shards and Sync Across Bots
+        env:
+          GH_TOKEN: ${{ secrets.GH_TOKEN }}
+          GH_TOKEN_2: ${{ secrets.GH_TOKEN_2 }}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+        run: |
+          git clone https://x-access-token:${GH_TOKEN}@github.com/h0rjd/hactaydu-cloud-bot.git vault
+          cd vault
+          git config user.name "Cloud IP-Rotator"
+          git config user.email "bot@hactaydu.local"
+          node consolidate_shards.js || true
+          git diff --staged --quiet || (git add accounts*.json && git commit -m "chore(accounts): consolidate fresh accounts batch [skip ci]" && git push origin main) || true
+
       - name: Check Cluster Mode & Trigger Next 252-VM Cycle
         env:
           GH_TOKEN: ${{ secrets.GH_TOKEN }}
