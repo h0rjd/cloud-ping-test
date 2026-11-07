@@ -1,4 +1,4 @@
-name: Test Header Diag
+name: Test Endpoints
 
 on:
   workflow_dispatch:
@@ -7,7 +7,7 @@ on:
         default: "1"
 
 jobs:
-  diag:
+  test:
     runs-on: ubuntu-latest
     steps:
       - name: Run Test
@@ -16,42 +16,22 @@ jobs:
 
 const https = require("https");
 
-const headers = {
-  "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-  "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-  "Accept-Language": "vi-VN,vi;q=0.9,en-US;q=0.8,en;q=0.7"
-};
-
-function req(name, extra) {
+function check(url) {
   return new Promise(resolve => {
-    const r = https.request("https://core.sdkmain.com/v1/apps/2a456b78cf5122cd9278ef24b4d7bfb9/9.9.9.5/register/phone?sdk_version=6.1.2&device_network=wifi&device_os=Android%2012&device_name=Pixel%207", {
-      method: "GET",
-      headers: { ...headers, ...extra }
-    }, res => {
+    https.get(url, { headers: { "User-Agent": "Mozilla/5.0" } }, res => {
       let b = "";
       res.on("data", c => b += c);
       res.on("end", () => {
-        console.log(`TEST [${name}]: ${res.statusCode} | token: ${b.includes("_token")} | len: ${b.length}`);
+        console.log(`URL: ${url} => Status: ${res.statusCode}, Body len: ${b.length}, Has _token: ${b.includes("_token")}`);
         resolve();
       });
-    });
-    r.on("error", e => { console.log(name, e.message); resolve(); });
-    r.end();
+    }).on("error", e => { console.log(url, e.message); resolve(); });
   });
 }
 
 async function main() {
-  await req("Direct", {});
-  await req("X-Forwarded-For", { "X-Forwarded-For": "113.161.72.10" });
-  await req("X-Real-IP", { "X-Real-IP": "113.161.72.10" });
-  await req("CF-Connecting-IP", { "CF-Connecting-IP": "113.161.72.10" });
-  await req("True-Client-IP", { "True-Client-IP": "113.161.72.10" });
-  await req("All VN Headers", {
-    "X-Forwarded-For": "113.161.72.10, 113.161.72.10",
-    "X-Real-IP": "113.161.72.10",
-    "CF-Connecting-IP": "113.161.72.10",
-    "Client-IP": "113.161.72.10"
-  });
+  await check("https://id.funtap.vn/register");
+  await check("https://core.sdkmain.com/v1/apps/2a456b78cf5122cd9278ef24b4d7bfb9/9.9.9.5/register/phone");
 }
 main();
 
